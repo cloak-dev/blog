@@ -8,6 +8,10 @@ Cloak is designed to be a secure layer on top of the messaging app. It is NOT a 
 
 The first steps in defining a security model are to identify the assets, the attack surface, and the motivation of the attacker. In our case, the assets are the messages that are being sent over the underlying messaging app. The 'attacker' in our case, is the messaging app itself, and the backdoors they have implemented behind your back. Their main motivation is to read and identify patterns in your messages. The attack surface they have to work with is the communication between Cloak and the messaging app, as well as the at-rest storage of the messages on their server.
 
+### Primary security goals
+
+Cloak's primary security goal is disallowing the messaging app's backdoor from reading, or identifying patterns in your messages. Since we have to operate on top of the messaging app, this is like fighting someone in their own backyard. Below, we have listed the challenges and the solutions we have implemented to overcome them.
+
 ### Other Considerations
 
 To ensure smooth functioning as a lightweight layer on top of the messaging app, Cloak also tries to be as lean as possible and doesn't implement any extra security feature that is not relevant to the threat model.
@@ -38,21 +42,21 @@ As we discussed before, the main motive of our attacker here is to read and iden
 
 ### Why do we need forward secrecy?
 
-Forward secrecy is a property of encryption schemes that prevents compromise of past messages in case of long term key compromise. This is important because the messaging app can compromise your long term key at any time. This is why we need forward secrecy.
+Forward secrecy is a property of encryption schemes that prevents compromise of past messages in case of long term key compromise. This is important because the messaging app can compromise your long term key at any time, and having forward secrecy will prevent that.
 
 ### Why do we need ephemeral keys?
 
-Ephemeral keys are keys that are used only once. They are generated on the fly and are never stored. This is important because the messaging app can compromise your long term key at any time. This is why we need ephemeral keys.
+Ephemeral keys are keys that are used only once. They are generated on the fly and are never stored. This adds to the security of the scheme as well.
 
 ### Why do we need protection against crib dragging?
 
-Crib dragging is a known plaintext attack where the attacker can decrypt a message by using a known plaintext. This is important as it can be used to identify patterns in your messages. This is why we need protection against crib dragging.
+Crib dragging is a known plaintext attack where the attacker can decrypt a message by using a known plaintext. It can be used to identify patterns in your messages and possibly even recover some of them. So, we definitely need protection against crib dragging.
 
 ## How we implement these security features
 
 ### Encryption
 
-We don't use AES in ECB mode. We use AES in CTR mode. This is because AES in ECB mode is vulnerable to known plaintext attacks, such as crib dragging. To mitigate this, we need to use a mode of operation that uses a nonce i.e a different key for each message. This is why we use AES in CTR mode.
+We don't use AES in ECB mode. We use AES in CTR mode. This is because AES in ECB mode is vulnerable to known plaintext attacks, such as crib dragging. To mitigate this, we need to use a mode of operation that uses a nonce i.e a different key for each message. AES in CTR mode does exactly that.
 
 #### Why don't we use AES in GCM mode?
 
@@ -143,7 +147,22 @@ Next, we guess that this is likely `Hello` and perform crib dragging with `Hello
 
 ### Mitigation
 
-As mentione earlier, Cloak mitigates this by ensuring that key-reuse never happens.
+As mentioned earlier, Cloak mitigates this by ensuring that key-reuse never happens.
 
 In that case, the equality the above attack rests upon viz. $c_1 \oplus c_2$ = $m_1 \oplus m_2$ doesn't hold and the attacker is helpless, as the $E_k$ values don't cancel out in the XOR as they are derived from different nonces i.e
 `IV || CTR[1]` and `IV || CTR[2]` where the two counters are necessarily distinct values.
+
+## Recap
+
+In this post, we discussed the security features that we need in Cloak, and how we can implement them. We also discussed the trade-off between the different modes of AES, and how we can prevent crib dragging.
+
+Just to complete the picture, let us look at a sample message interchange that happens with or without cloak.
+
+### Without Cloak
+
+<img src="https://i.imgur.com/Chq86qu.png" style="filter: invert(1)">
+
+### With Cloak
+
+<img src="https://i.imgur.com/GO2BkOb.png" style="filter: invert(1)">
+
